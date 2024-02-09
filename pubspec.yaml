@@ -39,6 +39,7 @@ dependencies:
   highlight_text: ^1.7.0
   avatar_glow: ^3.0.1
   http: ^1.2.0
+  animate_do: ^3.1.2
 
 dev_dependencies:
   flutter_test:
