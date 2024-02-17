@@ -14,15 +14,46 @@ class _SignUpPageState extends State<SignUpPage> {
 
   String _token = '';
   bool _loading = false;
+  String _detail = '';
+  String _password= '';
+  String _error = '';
 
   Future<void> _signUp() async {
+    final username = _usernameController.text.trim();
+    final password = _passwordController.text.trim();
+    if (username.isEmpty || password.isEmpty) {
+      setState(() {
+        _error = 'Username and password are required';
+      });
+      showDialog(
+        context: context,
+        builder: (BuildContext context) {
+          return AlertDialog(
+            title: Text('Sign Up Failed'),
+            content: Text(_error),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  Navigator.of(context).pop();
+                },
+                child: Text('OK'),
+              ),
+            ],
+          );
+        },
+      );
+
+      return;
+    }
+
     // Replace with your API endpoint for signing up
-    final apiUrl = 'http://192.168.1.106:8000/api/auth/register';
+    final apiUrl = 'http://192.168.43.168:8000/api/auth/register';
 
     setState(() {
       _loading = true;
     });
 
+    
     try {
       final response = await http.post(
         Uri.parse(apiUrl),
@@ -46,8 +77,40 @@ class _SignUpPageState extends State<SignUpPage> {
         
 
         // You can handle the signup response as needed
+      } else if (response.statusCode == 400) {
+  // Display error message on your interface when there is an issue with provided information
+  final Map<String, dynamic> data = json.decode(response.body);
 
-      } else {
+  // Check if the 'username' key is present and is a list
+  if (data.containsKey('username') && data['username'] is List) {
+    final List<dynamic> usernameErrors = data['username'];
+
+    if (usernameErrors.isNotEmpty) {
+      setState(() {
+        _error = usernameErrors[0]; // Taking the first error message, you can handle multiple messages if needed
+      });
+
+      showDialog(
+        context: context,
+        builder: (BuildContext context) {
+          return AlertDialog(
+            title: Text('Sign Up Failed'),
+            content: Text(_error),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  Navigator.of(context).pop();
+                },
+                child: Text('OK'),
+              ),
+            ],
+          );
+        },
+      );
+    }
+  }
+}
+ else {
         print('Failed to sign up. Status code: ${response.statusCode}');
         // Handle error
       }
@@ -66,6 +129,13 @@ class _SignUpPageState extends State<SignUpPage> {
     return Scaffold(
       appBar: AppBar(
         title: Text('Sign Up Page'),
+        centerTitle: true,
+        titleTextStyle: TextStyle(
+            color: Colors.white,
+            fontSize: 32,
+            fontWeight: FontWeight.bold,
+          ),
+        backgroundColor: Colors.deepPurple,
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),

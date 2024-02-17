@@ -4,6 +4,8 @@ import 'package:highlight_text/highlight_text.dart';
 import 'package:speech_to_text/speech_recognition_result.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
 import 'package:http/http.dart' as http;
+import 'dart:convert';
+import 'login.dart';
 
 
 class SpeechScreen extends StatefulWidget {
@@ -40,7 +42,7 @@ class _SpeechScreenState extends State<SpeechScreen> {
   double _confidence = 1.0;
   bool _speechEnabled = false;
   bool _isSpeechFinished = false;
-  
+  bool _loading = false; // New variable to track loading state
   
   String _result = ''; // Moved to be an instance variable
 
@@ -83,8 +85,11 @@ class _SpeechScreenState extends State<SpeechScreen> {
 
   Future<void> _sendTextToAPI(String text) async {
     //final apiUrl = 'https://webhook.site/f8c9463d-6cb1-4dbe-b4a0-3b50dbf3ea8c'; // Replace with your API endpoint
-    final apiUrl = 'http://192.168.1.106:8000/api/processing/';
+    final apiUrl = 'http://192.168.43.168:8000/api/processing/';
     try {
+      setState(() {
+        _loading = true; // Set loading state to true when starting API request
+      });
       final response = await http.post(
         Uri.parse(apiUrl),
         headers: {
@@ -108,24 +113,30 @@ class _SpeechScreenState extends State<SpeechScreen> {
     } catch (e) {
       print('Error sending text to API: $e');
       // Handle error
+    }finally {
+      setState(() {
+        _loading = false; // Set loading state to false when API request is complete
+      });
     }
   }
 
   
-
-  @override
-  Widget build(BuildContext context) {
+Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: Text('Confidence: ${(_confidence * 100.0).toStringAsFixed(1)}%'),
+        actions: [
+          IconButton(
+            icon: Icon(Icons.exit_to_app),
+            onPressed: _logout,
+          ),
+        ],
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
       floatingActionButton: AvatarGlow(
         animate: !_speech.isNotListening,
         glowColor: Theme.of(context).primaryColor,
-        //endRadius: 75.0,
         duration: const Duration(milliseconds: 2000),
-        //repeatPauseDuration: const Duration(milliseconds: 100),
         repeat: true,
         child: FloatingActionButton(
           onPressed: _speech.isNotListening ? _startListening : _stopListening,
@@ -136,16 +147,8 @@ class _SpeechScreenState extends State<SpeechScreen> {
         reverse: true,
         child: Container(
           padding: const EdgeInsets.fromLTRB(30.0, 30.0, 30.0, 150.0),
-          child: 
-            Column(
-              children: [
-              Text(
-                _speech.isNotListening.toString(),
-                style: TextStyle(
-                  fontSize: 18.0,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
+          child: Column(
+            children: [
               SizedBox(height: 20.0), // Add some spacing
               TextHighlight(
                 text: _text,
@@ -156,18 +159,43 @@ class _SpeechScreenState extends State<SpeechScreen> {
                   fontWeight: FontWeight.w400,
                 ),
               ),
-              Text(
-                _result.toString(),
-                style: TextStyle(
-                  fontSize: 18.0,
-                  fontWeight: FontWeight.bold,
+              SizedBox(height: 20.0), // Add some spacing
+              if (_loading)
+                CircularProgressIndicator() // Display loading indicator if loading
+              else if (_result.isNotEmpty)
+                Text(
+                  _parseResult(_result),
+                  style: TextStyle(
+                    fontSize: 18.0,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
-              ),
-              ]
-            )
+            ],
+          ),
         ),
       ),
     );
   }
+String _parseResult(String result) {
+  try {
+    final Map<String, dynamic> resultData = json.decode(result);
+    final String parsedResult = resultData['result'] ?? '';
+    return parsedResult.trim();
+  } catch (e) {
+    print('Error parsing result: $e');
+    return 'Failed to parse result';
+  }
+}
+void _logout() {
+    // You can perform any cleanup or additional tasks related to logout here
+    // For example, clear any user-related data, close connections, etc.
+
+    // Navigate back to the login screen
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (context) => LoginPage()),
+    );
+  }
+
 
 }
